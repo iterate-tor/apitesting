@@ -3,9 +3,11 @@ package com.example.financialmanager.services;
 import com.example.financialmanager.dtos.TransactionRequestDto;
 import com.example.financialmanager.dtos.TransactionResponseDto;
 import com.example.financialmanager.dtos.UpdateTransactionRequestDto;
+import com.example.financialmanager.entities.Category; // Added
 import com.example.financialmanager.entities.Transaction;
 import com.example.financialmanager.entities.TransactionType;
 import com.example.financialmanager.entities.User;
+import com.example.financialmanager.repositories.CategoryRepository; // Added
 import com.example.financialmanager.repositories.TransactionRepository;
 import com.example.financialmanager.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDate;
+// import java.time.LocalDate; // Already imported
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -25,47 +27,54 @@ public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
+    private final CategoryRepository categoryRepository; // Added
 
     @Autowired
-    public TransactionServiceImpl(TransactionRepository transactionRepository, UserRepository userRepository) {
+    public TransactionServiceImpl(TransactionRepository transactionRepository,
+                                  UserRepository userRepository,
+                                  CategoryRepository categoryRepository) { // Added
         this.transactionRepository = transactionRepository;
         this.userRepository = userRepository;
+        this.categoryRepository = categoryRepository; // Added
     }
 
-    // Helper method to fetch user
     private User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
             .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
     }
 
-    // Helper method to convert Entity to DTO
     private TransactionResponseDto convertToDto(Transaction transaction) {
         return new TransactionResponseDto(
             transaction.getId(),
             transaction.getAmount(),
             transaction.getDate(),
-            transaction.getCategory(),
+            transaction.getCategory().getName(), // Changed to get category name
             transaction.getDescription(),
-            transaction.getType(),
-            transaction.getUser().getId()
+            transaction.getType()
+            // userId removed as per previous DTO update
         );
     }
-
-    // Note: convertToEntity from TransactionRequestDto is simple enough to be inline or part of create.
-    // For update, it's different.
 
     @Override
     @Transactional
     public TransactionResponseDto createTransaction(TransactionRequestDto requestDto, String userEmail) {
         User user = getUserByEmail(userEmail);
 
+        Category category = categoryRepository.findById(requestDto.categoryId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid category ID: Category not found"));
+
+        // Check category usability: if custom, must belong to the user. Default categories are fine.
+        if (category.isCustom() && (category.getUser() == null || !category.getUser().getId().equals(user.getId()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Specified custom category is not accessible by this user.");
+        }
+
         Transaction transaction = new Transaction();
         transaction.setUser(user);
-        transaction.setAmount(requestDto.amount()); // Amount is already positive from DTO validation
+        transaction.setCategory(category); // Set Category entity
+        transaction.setAmount(requestDto.amount());
         transaction.setDate(requestDto.date());
-        transaction.setCategory(requestDto.category());
         transaction.setDescription(requestDto.description());
-        transaction.setType(requestDto.type()); // Type is explicitly set from DTO
+        transaction.setType(requestDto.type());
 
         Transaction savedTransaction = transactionRepository.save(transaction);
         return convertToDto(savedTransaction);
@@ -73,9 +82,10 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TransactionResponseDto> getTransactions(String userEmail, LocalDate startDate, LocalDate endDate, String category, TransactionType type) {
+    public List<TransactionResponseDto> getTransactions(String userEmail, LocalDate startDate, LocalDate endDate, UUID categoryId, TransactionType type) {
         User user = getUserByEmail(userEmail);
-        List<Transaction> transactions = transactionRepository.findTransactionsByFilters(user, startDate, endDate, category, type);
+        // Parameter 'category' changed to 'categoryId'
+        List<Transaction> transactions = transactionRepository.findTransactionsByFilters(user, startDate, endDate, categoryId, type);
         return transactions.stream()
             .map(this::convertToDto)
             .collect(Collectors.toList());
@@ -84,14 +94,14 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional(readOnly = true)
     public TransactionResponseDto getTransactionById(UUID transactionId, String userEmail) {
-        User user = getUserByEmail(userEmail); // Ensure user exists
+        User user = getUserByEmail(userEmail);
         Transaction transaction = transactionRepository.findById(transactionId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
 
         if (!transaction.getUser().getId().equals(user.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied to this transaction");
         }
-        return convertToDto(transaction);
+        return convertToDto(transaction); // DTO conversion is updated
     }
 
     @Override
@@ -105,18 +115,27 @@ public class TransactionServiceImpl implements TransactionService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied to this transaction");
         }
 
-        // Spec: "Update only amount and/or description"
+        // Spec: "Users can modify any transaction field except the date field."
         if (requestDto.amount() != null) {
-            // Amount must be positive. Validation is on DTO, but good to be defensive.
-            if (requestDto.amount().signum() <= 0) {
-                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount must be positive");
-            }
+            // Validation for positivity is on DTO, but can be re-checked if desired
             transaction.setAmount(requestDto.amount());
+        }
+        if (requestDto.categoryId() != null) {
+            Category newCategory = categoryRepository.findById(requestDto.categoryId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid category ID: New category not found"));
+            // Check category usability for the new category
+            if (newCategory.isCustom() && (newCategory.getUser() == null || !newCategory.getUser().getId().equals(user.getId()))) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Specified new custom category is not accessible by this user.");
+            }
+            transaction.setCategory(newCategory);
         }
         if (requestDto.description() != null) {
             transaction.setDescription(requestDto.description());
         }
-        // Note: Category, Date, and Type are NOT updated as per current spec for this method.
+        if (requestDto.type() != null) {
+            transaction.setType(requestDto.type());
+        }
+        // Date is not updated.
 
         Transaction updatedTransaction = transactionRepository.save(transaction);
         return convertToDto(updatedTransaction);

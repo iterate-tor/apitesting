@@ -9,8 +9,8 @@ public record TransactionResponseDto(
     UUID id,
     BigDecimal amount,
     LocalDate date,
-    String category,
+    String categoryName, // Changed from 'category' to 'categoryName'
     String description,
-    TransactionType type,
-    UUID userId
+    TransactionType type
+    // UUID userId // Removed as per spec for this response
 ) {}

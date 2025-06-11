@@ -17,7 +17,7 @@ public interface TransactionService {
         String userEmail,
         LocalDate startDate,
         LocalDate endDate,
-        String category,
+        UUID categoryId, // Changed from String category
         TransactionType type
     );
 

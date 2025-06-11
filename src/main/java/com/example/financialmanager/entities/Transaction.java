@@ -34,8 +34,12 @@ public class Transaction {
     @Column(nullable = false)
     private LocalDate date;
 
-    @Column(nullable = false)
-    private String category;
+    // @Column(nullable = false) // Replaced by ManyToOne relationship
+    // private String category;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", nullable = false)
+    private Category category;
 
     private String description;
 
@@ -47,7 +51,8 @@ public class Transaction {
     public Transaction() {
     }
 
-    public Transaction(User user, BigDecimal amount, LocalDate date, String category, String description, TransactionType type) {
+    // Constructor updated for Category entity
+    public Transaction(User user, BigDecimal amount, LocalDate date, Category category, String description, TransactionType type) {
         this.user = user;
         this.amount = amount;
         this.date = date;
@@ -89,11 +94,12 @@ public class Transaction {
         this.date = date;
     }
 
-    public String getCategory() {
+    // Getter and Setter for Category entity
+    public Category getCategory() {
         return category;
     }
 
-    public void setCategory(String category) {
+    public void setCategory(Category category) {
         this.category = category;
     }
 
@@ -123,14 +129,14 @@ public class Transaction {
                Objects.equals(user, that.user) && // Be careful with LAZY fetched fields in equals/hashCode if not loaded
                Objects.equals(amount, that.amount) &&
                Objects.equals(date, that.date) &&
-               Objects.equals(category, that.category) &&
+               Objects.equals(category != null ? category.getId() : null, that.category != null ? that.category.getId() : null) && // Compare category IDs
                type == that.type;
     }
 
     @Override
     public int hashCode() {
         // Be careful with LAZY fetched fields in equals/hashCode if not loaded
-        return Objects.hash(id, user != null ? user.getId() : null, amount, date, category, type);
+        return Objects.hash(id, user != null ? user.getId() : null, amount, date, category != null ? category.getId() : null, type); // Use category ID
     }
 
     // toString
@@ -138,10 +144,10 @@ public class Transaction {
     public String toString() {
         return "Transaction{" +
                "id=" + id +
-               ", userId=" + (user != null ? user.getId() : null) + // Avoid loading user for toString
+               ", userId=" + (user != null ? user.getId() : null) +
+               ", categoryId=" + (category != null ? category.getId() : null) + // Avoid loading category for toString
                ", amount=" + amount +
                ", date=" + date +
-               ", category='" + category + '\'' +
                ", description='" + description + '\'' +
                ", type=" + type +
                '}';

@@ -13,9 +13,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode; // Good practice for financial calculations
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.HashMap; // For maps
 import java.util.List;
+import java.util.Map; // For maps
 
 @Service
 public class ReportServiceImpl implements ReportService {
@@ -43,22 +46,31 @@ public class ReportServiceImpl implements ReportService {
         LocalDate startDate = yearMonth.atDay(1);
         LocalDate endDate = yearMonth.atEndOfMonth();
 
-        List<CategoryTotalDto> totalsByCategory = transactionRepository.getCategoryTotalsByUserAndDateRange(user, startDate, endDate);
+        List<CategoryTotalDto> categoryTotals = transactionRepository.getCategoryTotalsByUserAndDateRange(user, startDate, endDate);
 
-        BigDecimal totalIncome = BigDecimal.ZERO;
-        BigDecimal totalExpenses = BigDecimal.ZERO;
+        Map<String, BigDecimal> totalIncomeMap = new HashMap<>();
+        Map<String, BigDecimal> totalExpensesMap = new HashMap<>();
 
-        for (CategoryTotalDto total : totalsByCategory) {
-            if (total.type() == TransactionType.INCOME) {
-                totalIncome = totalIncome.add(total.totalAmount());
-            } else if (total.type() == TransactionType.EXPENSE) {
-                totalExpenses = totalExpenses.add(total.totalAmount());
+        for (CategoryTotalDto dto : categoryTotals) {
+            // Ensure amounts are scaled consistently, e.g., 2 decimal places
+            BigDecimal scaledAmount = dto.totalAmount().setScale(2, RoundingMode.HALF_UP);
+            if (dto.type() == TransactionType.INCOME) {
+                totalIncomeMap.put(dto.category(), scaledAmount);
+            } else if (dto.type() == TransactionType.EXPENSE) {
+                totalExpensesMap.put(dto.category(), scaledAmount);
             }
         }
 
-        BigDecimal netSavings = totalIncome.subtract(totalExpenses);
+        BigDecimal overallTotalIncome = totalIncomeMap.values().stream()
+            .reduce(BigDecimal.ZERO, BigDecimal::add)
+            .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal overallTotalExpenses = totalExpensesMap.values().stream()
+            .reduce(BigDecimal.ZERO, BigDecimal::add)
+            .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal netSavings = overallTotalIncome.subtract(overallTotalExpenses)
+            .setScale(2, RoundingMode.HALF_UP);
 
-        return new MonthlyReportDto(year, month, totalsByCategory, totalIncome, totalExpenses, netSavings);
+        return new MonthlyReportDto(year, month, totalIncomeMap, totalExpensesMap, netSavings);
     }
 
     @Override
@@ -69,21 +81,37 @@ public class ReportServiceImpl implements ReportService {
         LocalDate startDate = LocalDate.of(year, 1, 1);
         LocalDate endDate = LocalDate.of(year, 12, 31);
 
-        List<CategoryTotalDto> totalsByCategory = transactionRepository.getCategoryTotalsByUserAndDateRange(user, startDate, endDate);
+        List<CategoryTotalDto> categoryTotals = transactionRepository.getCategoryTotalsByUserAndDateRange(user, startDate, endDate);
 
-        BigDecimal totalIncome = BigDecimal.ZERO;
-        BigDecimal totalExpenses = BigDecimal.ZERO;
+        Map<String, BigDecimal> totalIncomeMap = new HashMap<>();
+        Map<String, BigDecimal> totalExpensesMap = new HashMap<>();
 
-        for (CategoryTotalDto total : totalsByCategory) {
-            if (total.type() == TransactionType.INCOME) {
-                totalIncome = totalIncome.add(total.totalAmount());
-            } else if (total.type() == TransactionType.EXPENSE) {
-                totalExpenses = totalExpenses.add(total.totalAmount());
+        for (CategoryTotalDto dto : categoryTotals) {
+            BigDecimal scaledAmount = dto.totalAmount().setScale(2, RoundingMode.HALF_UP);
+            if (dto.type() == TransactionType.INCOME) {
+                // If a category has both income and expenses over the year, this will sum them up per type.
+                // The DTO from repo is (categoryName, sum(amount), type). So, if a category has multiple entries for a type (which it shouldn't due to GROUP BY),
+                // this logic is fine. But if a category 'Consulting' is both INCOME and EXPENSE type, they are distinct entries in categoryTotals.
+                totalIncomeMap.merge(dto.category(), scaledAmount, BigDecimal::add);
+            } else if (dto.type() == TransactionType.EXPENSE) {
+                totalExpensesMap.merge(dto.category(), scaledAmount, BigDecimal::add);
             }
         }
 
-        BigDecimal netSavings = totalIncome.subtract(totalExpenses);
+        // Ensure all map values are scaled, though merge should maintain scale if initial values are scaled.
+        totalIncomeMap.replaceAll((k, v) -> v.setScale(2, RoundingMode.HALF_UP));
+        totalExpensesMap.replaceAll((k, v) -> v.setScale(2, RoundingMode.HALF_UP));
 
-        return new YearlyReportDto(year, totalsByCategory, totalIncome, totalExpenses, netSavings);
+
+        BigDecimal overallTotalIncome = totalIncomeMap.values().stream()
+            .reduce(BigDecimal.ZERO, BigDecimal::add)
+            .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal overallTotalExpenses = totalExpensesMap.values().stream()
+            .reduce(BigDecimal.ZERO, BigDecimal::add)
+            .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal netSavings = overallTotalIncome.subtract(overallTotalExpenses)
+            .setScale(2, RoundingMode.HALF_UP);
+
+        return new YearlyReportDto(year, totalIncomeMap, totalExpensesMap, netSavings);
     }
 }

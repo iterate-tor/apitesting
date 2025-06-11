@@ -20,28 +20,32 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     @Query("SELECT t FROM Transaction t WHERE t.user = :user " +
            "AND (:startDate IS NULL OR t.date >= :startDate) " +
            "AND (:endDate IS NULL OR t.date <= :endDate) " +
-           "AND (:category IS NULL OR LOWER(t.category) LIKE LOWER(CONCAT('%', :category, '%'))) " +
-           "AND (:type IS NULL OR t.type = :type)")
+           "AND (:categoryId IS NULL OR t.category.id = :categoryId) " + // Changed category to categoryId
+           "AND (:type IS NULL OR t.type = :type) " +
+           "ORDER BY t.date DESC, t.id DESC") // Added ORDER BY
     List<Transaction> findTransactionsByFilters(
         @Param("user") User user,
         @Param("startDate") LocalDate startDate,
         @Param("endDate") LocalDate endDate,
-        @Param("category") String category,
+        @Param("categoryId") UUID categoryId, // Changed category to categoryId
         @Param("type") TransactionType type
     );
 
     // Additional simpler query methods as discussed in the plan
     List<Transaction> findByUser(User user);
     List<Transaction> findByUserAndDateBetween(User user, LocalDate startDate, LocalDate endDate);
-    List<Transaction> findByUserAndCategoryContainingIgnoreCase(User user, String category);
+    // findByUserAndCategoryContainingIgnoreCase is no longer valid due to Category entity change
+    // List<Transaction> findByUserAndCategoryContainingIgnoreCase(User user, String category);
+    List<Transaction> findByUserAndCategory(User user, com.example.financialmanager.entities.Category category); // New method if needed
     List<Transaction> findByUserAndType(User user, TransactionType type);
 
-    boolean existsByUserAndCategoryIgnoreCase(User user, String category);
+    // boolean existsByUserAndCategoryIgnoreCase(User user, String category); // Old
+    boolean existsByCategory(com.example.financialmanager.entities.Category category); // New
 
-    @Query("SELECT new com.example.financialmanager.dtos.CategoryTotalDto(t.category, SUM(t.amount), t.type) " +
+    @Query("SELECT new com.example.financialmanager.dtos.CategoryTotalDto(t.category.name, SUM(t.amount), t.type) " + // Use category.name
            "FROM Transaction t " +
            "WHERE t.user = :user AND t.date >= :startDate AND t.date <= :endDate " +
-           "GROUP BY t.category, t.type")
+           "GROUP BY t.category.name, t.type") // Use category.name
     List<com.example.financialmanager.dtos.CategoryTotalDto> getCategoryTotalsByUserAndDateRange(
         @Param("user") User user,
         @Param("startDate") LocalDate startDate,

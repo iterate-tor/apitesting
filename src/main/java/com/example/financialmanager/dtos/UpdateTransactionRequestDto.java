@@ -1,16 +1,18 @@
 package com.example.financialmanager.dtos;
 
+import com.example.financialmanager.entities.TransactionType;
 import jakarta.validation.constraints.DecimalMin;
 import java.math.BigDecimal;
+import java.util.UUID;
 
+// All fields are optional. Service layer will handle partial updates.
 public record UpdateTransactionRequestDto(
-    // Amount is optional, but if present, must be positive
     @DecimalMin(value = "0.01", inclusive = true, message = "Amount must be positive if provided")
-    BigDecimal amount,
+    BigDecimal amount, // If null, not updated. If present, must be positive.
 
-    String description
-) {
-    // Custom constructor or validation can be added if more complex rules are needed,
-    // for example, to ensure at least one field is present.
-    // For now, allowing both to be null means no update if both are null.
-}
+    UUID categoryId, // If null, not updated.
+
+    String description, // If null, not updated. Can be empty string to clear description.
+
+    TransactionType type // If null, not updated.
+) {}

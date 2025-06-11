@@ -2,6 +2,8 @@ package com.example.financialmanager.controllers;
 
 import com.example.financialmanager.dtos.SavingsGoalRequestDto;
 import com.example.financialmanager.dtos.SavingsGoalResponseDto;
+import com.example.financialmanager.dtos.UpdateSavingsGoalRequestDto; // Added
+import com.example.financialmanager.dtos.MessageResponseDto; // Added
 import com.example.financialmanager.services.SavingsGoalService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map; // Added
 import java.util.UUID;
 
 @RestController
@@ -32,8 +35,6 @@ public class SavingsGoalController {
     }
 
     private String getCurrentUserEmail() {
-        // Ensure authentication is present, though Spring Security should handle unauthorized access.
-        // Consider adding a check if SecurityContextHolder.getContext().getAuthentication() is null or not authenticated.
         return SecurityContextHolder.getContext().getAuthentication().getName();
     }
 
@@ -45,10 +46,11 @@ public class SavingsGoalController {
     }
 
     @GetMapping
-    public ResponseEntity<List<SavingsGoalResponseDto>> getAllGoals() {
+    public ResponseEntity<Map<String, List<SavingsGoalResponseDto>>> getAllGoals() { // Response wrapped in Map
         String userEmail = getCurrentUserEmail();
         List<SavingsGoalResponseDto> goals = savingsGoalService.getAllGoals(userEmail);
-        return ResponseEntity.ok(goals);
+        Map<String, List<SavingsGoalResponseDto>> response = Map.of("goals", goals); // Wrapped response
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
@@ -59,16 +61,18 @@ public class SavingsGoalController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<SavingsGoalResponseDto> updateGoal(@PathVariable UUID id, @Valid @RequestBody SavingsGoalRequestDto goalDto) {
+    public ResponseEntity<SavingsGoalResponseDto> updateGoal(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateSavingsGoalRequestDto goalDto) { // Changed DTO type
         String userEmail = getCurrentUserEmail();
         SavingsGoalResponseDto updatedGoal = savingsGoalService.updateGoal(id, goalDto, userEmail);
         return ResponseEntity.ok(updatedGoal);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteGoal(@PathVariable UUID id) {
+    public ResponseEntity<MessageResponseDto> deleteGoal(@PathVariable UUID id) { // Return type changed
         String userEmail = getCurrentUserEmail();
         savingsGoalService.deleteGoal(id, userEmail);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(new MessageResponseDto("Goal deleted successfully")); // New response body
     }
 }

@@ -1,7 +1,8 @@
 package com.example.financialmanager.services;
 
 import com.example.financialmanager.dtos.RegisterRequest;
-import com.example.financialmanager.dtos.UserDto;
+// import com.example.financialmanager.dtos.UserDto; // No longer returning UserDto
+import com.example.financialmanager.dtos.UserRegistrationResponseDto; // New return type
 import com.example.financialmanager.entities.User;
 import com.example.financialmanager.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,34 +31,29 @@ public class AuthServiceImpl implements AuthService, UserDetailsService {
     // UserRepository is already autowired via constructor. No need for a separate field injection.
 
     @Override
-    public UserDto registerUser(RegisterRequest registerRequest) {
-        if (userRepository.findByEmail(registerRequest.email()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+    public UserRegistrationResponseDto registerUser(RegisterRequest registerRequest) {
+        if (userRepository.findByEmail(registerRequest.username()).isPresent()) { // Use username() here
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email (username) already exists");
         }
 
         User user = new User();
-        user.setEmail(registerRequest.email());
+        user.setEmail(registerRequest.username()); // Use username() for entity's email field
         user.setPassword(passwordEncoder.encode(registerRequest.password()));
         user.setFullName(registerRequest.fullName());
         user.setPhone(registerRequest.phone());
 
         User savedUser = userRepository.save(user);
 
-        return new UserDto(
-            savedUser.getId(),
-            savedUser.getEmail(),
-            savedUser.getFullName(),
-            savedUser.getPhone()
-        );
+        return new UserRegistrationResponseDto("User registered successfully", savedUser.getId());
     }
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+            .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username)); // parameter renamed
 
         return new org.springframework.security.core.userdetails.User(
-            user.getEmail(),
+            user.getEmail(), // This is correct, User entity stores it as email
             user.getPassword(),
             new ArrayList<>() // No authorities/roles defined yet
         );

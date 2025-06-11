@@ -30,13 +30,22 @@ public class Category {
     @Column(nullable = false)
     private String name;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TransactionType type;
+
+    @Column(nullable = false)
+    private boolean isCustom;
+
     // Constructors
     public Category() {
     }
 
-    public Category(User user, String name) {
+    public Category(User user, String name, TransactionType type, boolean isCustom) {
         this.user = user;
         this.name = name;
+        this.type = type;
+        this.isCustom = isCustom;
     }
 
     // Getters and Setters
@@ -64,20 +73,38 @@ public class Category {
         this.name = name;
     }
 
+    public TransactionType getType() {
+        return type;
+    }
+
+    public void setType(TransactionType type) {
+        this.type = type;
+    }
+
+    public boolean isCustom() {
+        return isCustom;
+    }
+
+    public void setCustom(boolean custom) {
+        isCustom = custom;
+    }
+
     // equals and hashCode
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Category category = (Category) o;
-        return Objects.equals(id, category.id) &&
-               Objects.equals(user != null ? user.getId() : null, category.user != null ? category.user.getId() : null) && // Compare user IDs
-               Objects.equals(name, category.name);
+        return isCustom == category.isCustom &&
+               Objects.equals(id, category.id) &&
+               Objects.equals(user != null ? user.getId() : null, category.user != null ? category.user.getId() : null) &&
+               Objects.equals(name, category.name) &&
+               type == category.type;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, user != null ? user.getId() : null, name); // Use user ID for hash
+        return Objects.hash(id, user != null ? user.getId() : null, name, type, isCustom);
     }
 
     // toString
@@ -85,8 +112,10 @@ public class Category {
     public String toString() {
         return "Category{" +
                "id=" + id +
-               ", userId=" + (user != null ? user.getId() : null) + // Avoid loading user for toString
+               ", userId=" + (user != null ? user.getId() : null) +
                ", name='" + name + '\'' +
+               ", type=" + type +
+               ", isCustom=" + isCustom +
                '}';
     }
 }

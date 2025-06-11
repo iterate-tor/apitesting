@@ -9,12 +9,20 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.example.financialmanager.entities.TransactionType; // Needed for new method
+
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, UUID> {
 
-    Optional<Category> findByUserAndNameIgnoreCase(User user, String name);
+    // Optional<Category> findByUserAndNameIgnoreCase(User user, String name); // Replaced or made more specific
+    List<Category> findByUser(User user); // Keep for general user category fetching if needed, or remove if findByUserAndIsCustomTrue is sufficient
 
-    List<Category> findByUser(User user);
+    // boolean existsByUserAndNameIgnoreCase(User user, String name); // Replaced
 
-    boolean existsByUserAndNameIgnoreCase(User user, String name);
+    // New methods for refactored service:
+    List<Category> findByUserAndIsCustomTrue(User user, boolean isCustom);
+
+    Optional<Category> findByUserAndNameIgnoreCaseAndIsCustomTrue(User user, String name, boolean isCustom);
+
+    boolean existsByUserAndNameIgnoreCaseAndTypeAndIsCustomTrue(User user, String name, TransactionType type, boolean isCustom);
 }

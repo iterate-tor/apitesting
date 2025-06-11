@@ -14,7 +14,7 @@ public interface SavingsGoalService {
 
     SavingsGoalResponseDto getGoalById(UUID goalId, String userEmail);
 
-    SavingsGoalResponseDto updateGoal(UUID goalId, SavingsGoalRequestDto requestDto, String userEmail);
+    SavingsGoalResponseDto updateGoal(UUID goalId, com.example.financialmanager.dtos.UpdateSavingsGoalRequestDto requestDto, String userEmail); // Changed DTO type
 
     void deleteGoal(UUID goalId, String userEmail);
 }

@@ -1,14 +1,12 @@
 package com.example.financialmanager.dtos;
 
 import java.math.BigDecimal;
-import java.util.List;
-// import java.util.Map; // Not using monthlyBreakdown for now
+import java.util.Map; // Changed from List<CategoryTotalDto>
 
 public record YearlyReportDto(
     int year,
-    List<CategoryTotalDto> totalsByCategory, // Aggregated for the whole year
-    BigDecimal totalIncome,
-    BigDecimal totalExpenses,
+    Map<String, BigDecimal> totalIncome, // Changed from List and BigDecimal
+    Map<String, BigDecimal> totalExpenses, // Changed from List and BigDecimal
     BigDecimal netSavings
-    // Map<Integer, MonthlyReportDto> monthlyBreakdown // Optional, deferred
+    // Map<Integer, MonthlyReportDto> monthlyBreakdown // Optional, deferred - Kept comment
 ) {}

@@ -6,9 +6,13 @@ import java.util.UUID;
 
 public record SavingsGoalResponseDto(
     UUID id,
-    String name,
+    String goalName, // Renamed from 'name'
     BigDecimal targetAmount,
-    BigDecimal currentAmount,
     LocalDate targetDate,
-    UUID userId
+    LocalDate startDate, // Added
+    BigDecimal currentProgress, // Added (calculated value)
+    Double progressPercentage, // Added (calculated value)
+    BigDecimal remainingAmount // Added (calculated value)
+    // UUID userId, // Removed
+    // BigDecimal currentAmount // Removed (old stored value)
 ) {}

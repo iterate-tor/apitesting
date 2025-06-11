@@ -32,22 +32,26 @@ public class SavingsGoal {
     @Column(nullable = false)
     private BigDecimal targetAmount;
 
-    @Column(nullable = false)
-    private BigDecimal currentAmount;
+    // @Column(nullable = false) // Removed currentAmount
+    // private BigDecimal currentAmount;
 
     @Column(nullable = false)
     private LocalDate targetDate;
+
+    @Column(nullable = false) // Added startDate
+    private LocalDate startDate;
 
     // Constructors
     public SavingsGoal() {
     }
 
-    public SavingsGoal(User user, String name, BigDecimal targetAmount, BigDecimal currentAmount, LocalDate targetDate) {
+    public SavingsGoal(User user, String name, BigDecimal targetAmount, /*BigDecimal currentAmount,*/ LocalDate targetDate, LocalDate startDate) {
         this.user = user;
         this.name = name;
         this.targetAmount = targetAmount;
-        this.currentAmount = currentAmount;
+        // this.currentAmount = currentAmount; // Removed
         this.targetDate = targetDate;
+        this.startDate = startDate; // Added
     }
 
     // Getters and Setters
@@ -83,13 +87,13 @@ public class SavingsGoal {
         this.targetAmount = targetAmount;
     }
 
-    public BigDecimal getCurrentAmount() {
-        return currentAmount;
-    }
+    // public BigDecimal getCurrentAmount() { // Removed
+    // return currentAmount;
+    // }
 
-    public void setCurrentAmount(BigDecimal currentAmount) {
-        this.currentAmount = currentAmount;
-    }
+    // public void setCurrentAmount(BigDecimal currentAmount) { // Removed
+    // this.currentAmount = currentAmount;
+    // }
 
     public LocalDate getTargetDate() {
         return targetDate;
@@ -99,6 +103,14 @@ public class SavingsGoal {
         this.targetDate = targetDate;
     }
 
+    public LocalDate getStartDate() { // Added
+        return startDate;
+    }
+
+    public void setStartDate(LocalDate startDate) { // Added
+        this.startDate = startDate;
+    }
+
     // equals and hashCode
     @Override
     public boolean equals(Object o) {
@@ -106,15 +118,16 @@ public class SavingsGoal {
         if (o == null || getClass() != o.getClass()) return false;
         SavingsGoal that = (SavingsGoal) o;
         return Objects.equals(id, that.id) &&
-               Objects.equals(user != null ? user.getId() : null, that.user != null ? that.user.getId() : null) && // Compare user IDs
+               Objects.equals(user != null ? user.getId() : null, that.user != null ? that.user.getId() : null) &&
                Objects.equals(name, that.name) &&
                Objects.equals(targetAmount, that.targetAmount) &&
-               Objects.equals(targetDate, that.targetDate);
+               Objects.equals(targetDate, that.targetDate) &&
+               Objects.equals(startDate, that.startDate); // Added
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, user != null ? user.getId() : null, name, targetAmount, targetDate); // Use user ID for hash
+        return Objects.hash(id, user != null ? user.getId() : null, name, targetAmount, targetDate, startDate); // Added startDate
     }
 
     // toString
@@ -125,8 +138,9 @@ public class SavingsGoal {
                ", userId=" + (user != null ? user.getId() : null) +
                ", name='" + name + '\'' +
                ", targetAmount=" + targetAmount +
-               ", currentAmount=" + currentAmount +
+               // ", currentAmount=" + currentAmount + // Removed
                ", targetDate=" + targetDate +
+               ", startDate=" + startDate + // Added
                '}';
     }
 }

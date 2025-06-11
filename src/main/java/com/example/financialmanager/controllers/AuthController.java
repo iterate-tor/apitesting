@@ -2,7 +2,8 @@ package com.example.financialmanager.controllers;
 
 import com.example.financialmanager.dtos.LoginRequest;
 import com.example.financialmanager.dtos.RegisterRequest;
-import com.example.financialmanager.dtos.UserDto;
+// import com.example.financialmanager.dtos.UserDto; // No longer returning UserDto
+import com.example.financialmanager.dtos.UserRegistrationResponseDto; // New return type
 import com.example.financialmanager.services.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,9 +26,9 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<UserDto> register(@Valid @RequestBody RegisterRequest registerRequest) {
-        UserDto userDto = authService.registerUser(registerRequest);
-        return new ResponseEntity<>(userDto, HttpStatus.CREATED);
+    public ResponseEntity<UserRegistrationResponseDto> register(@Valid @RequestBody RegisterRequest registerRequest) {
+        UserRegistrationResponseDto responseDto = authService.registerUser(registerRequest);
+        return new ResponseEntity<>(responseDto, HttpStatus.CREATED);
     }
 
     @PostMapping("/login")
